@@ -15,7 +15,7 @@ func init() {
 	db.ConnectDB()
 }
 
-// Method to Send Product to ordered_product topic
+// Method to update Seat Matrix depending upon reservation and cancelation
 func UpdateSeatMatrix(reservationId, userId primitive.ObjectID, seat int32) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -26,7 +26,7 @@ func UpdateSeatMatrix(reservationId, userId primitive.ObjectID, seat int32) erro
 		return err
 	}
 
-	// Send product to ordered_product kafka topic
+	// Send reservations details to train service
 	reservationBody := rsv.ReserveType{
 		ID:              primitive.NewObjectID(),
 		Destination:     reservation.Destination,
