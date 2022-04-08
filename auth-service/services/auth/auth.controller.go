@@ -27,7 +27,6 @@ type SignUpBody struct {
 
 func init() {
 	db.ConnectDB()
-	JWTManager.NewJWTManager("Ishan", time.Hour*50)
 }
 
 func Login(c *gin.Context) {
@@ -55,6 +54,7 @@ func Login(c *gin.Context) {
 
 	token, err := JWTManager.Manager.Generate(user)
 	if err != nil {
+		fmt.Println(err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error while creating token"})
 		return
 	}

@@ -2,7 +2,8 @@ package jwtmanager
 
 import (
 	"fmt"
-	"time"
+	"io/ioutil"
+	"log"
 
 	"swiggy/gin/services/user"
 
@@ -11,35 +12,56 @@ import (
 
 var Manager *JWTManager
 
-func NewJWTManager(secretKey string, tokenDuration time.Duration) {
-	Manager = &JWTManager{secretKey, tokenDuration}
+func init() {
+	prvKey, err := ioutil.ReadFile("keys/private-key")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	pubKey, err := ioutil.ReadFile("keys/public-key")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	Manager = &JWTManager{
+		privateKey: prvKey,
+		publicKey:  pubKey,
+	}
 }
 
 func (manager *JWTManager) Generate(user *user.User) (string, error) {
 	claims := UserClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(manager.tokenDuration).Unix(),
-		},
 		Username: user.Username,
 		Role:     user.Role,
 		ID:       user.ID.Hex(),
 	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(manager.privateKey)
+	if err != nil {
+		return "", fmt.Errorf("create: parse key: %w", err)
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("create: sign token: %w", err)
+	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(manager.secretKey))
+	return token, nil
+
 }
 
 func (manager *JWTManager) Verify(accessToken string) (*UserClaims, error) {
+
+	key, err := jwt.ParseRSAPublicKeyFromPEM(manager.publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("validate: parse key: %w", err)
+	}
+
 	token, err := jwt.ParseWithClaims(
 		accessToken,
 		&UserClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			_, ok := token.Method.(*jwt.SigningMethodHMAC)
-			if !ok {
-				return nil, fmt.Errorf("unexpected token signing method")
+		func(jwtToken *jwt.Token) (interface{}, error) {
+			if _, ok := jwtToken.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected method: %s", jwtToken.Header["alg"])
 			}
 
-			return []byte(manager.secretKey), nil
+			return key, nil
 		},
 	)
 

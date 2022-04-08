@@ -1,14 +1,12 @@
 package jwtmanager
 
 import (
-	"time"
-
 	"github.com/golang-jwt/jwt"
 )
 
 type JWTManager struct {
-	secretKey     string
-	tokenDuration time.Duration
+	publicKey     []byte
+	privateKey    []byte
 }
 
 type UserClaims struct {
